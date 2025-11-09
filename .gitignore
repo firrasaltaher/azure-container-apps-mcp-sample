@@ -9,3 +9,7 @@ wheels/
 # Virtual environments
 .venv
 .vscode/mcp.json
+
+.env
+
+uv.lock

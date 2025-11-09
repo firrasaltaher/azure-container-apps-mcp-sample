@@ -8,4 +8,5 @@ dependencies = [
     "fastapi[standard]>=0.115.12",
     "httpx>=0.28.1",
     "mcp[cli]>=1.6.0",
+    "pyodbc>=4.0.35",
 ]

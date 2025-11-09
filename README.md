@@ -7,6 +7,7 @@ This MCP server uses SSE transport and is authenticated with an API key.
 Prerequisites:
 * Python 3.11 or later
 * [uv](https://docs.astral.sh/uv/getting-started/installation/)
+* [Microsoft ODBC Driver 18 for SQL Server](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server)
 
 Run the server locally:
 
@@ -19,7 +20,16 @@ export API_KEYS=<AN_API_KEY>
 # windows
 set API_KEYS=<AN_API_KEY>
 
+# or load the vars from the .env file
+# First load the .env file
+Get-Content .env | ForEach-Object {
+    if ($_ -match '^(?<key>[^#=]+)=(?<value>.+)$') {
+        [System.Environment]::SetEnvironmentVariable($matches['key'], $matches['value'])
+    }
+}
+
 uv run fastapi dev main.py
+
 ```
 
 VS Code MCP configuration (mcp.json):
@@ -29,17 +39,17 @@ VS Code MCP configuration (mcp.json):
     "inputs": [
         {
             "type": "promptString",
-            "id": "weather-api-key",
-            "description": "Weather API Key",
+            "id": "api-key",
+            "description": "SQL Server MCP API Key",
             "password": true
         }
     ],
     "servers": {
-        "weather-sse": {
+        "sql-server-mcp-sse": {
             "type": "sse",
             "url": "http://localhost:8000/sse",
             "headers": {
-                "x-api-key": "${input:weather-api-key}"
+                "x-api-key": "${input:api-key}"
             }
         }
     }
@@ -49,7 +59,19 @@ VS Code MCP configuration (mcp.json):
 ## Deploy to Azure Container Apps
 
 ```bash
-az containerapp up -g <RESOURCE_GROUP_NAME> -n weather-mcp --environment mcp -l westus --env-vars API_KEYS=<AN_API_KEY> --source .
+az containerapp up -g ${{RESOURCE_GROUP_NAME}} -n weather-mcp --environment mcp -l westus --env-vars-file .env --source .
+```
+
+```bash
+# First load the .env file
+Get-Content .env | ForEach-Object {
+    if ($_ -match '^(?<key>[^#=]+)=(?<value>.+)$') {
+        [System.Environment]::SetEnvironmentVariable($matches['key'], $matches['value'])
+    }
+}
+
+# Then run with individual env vars
+az containerapp up -g $env:RESOURCE_GROUP_NAME -n "sql-mcp" --environment $env:CONTAINER_APP_ENV -l $env:LOCATION --env-vars "API_KEYS=$env:API_KEYS" "SQL_SERVER_CONNECTION_STRING=$env:SQL_SERVER_CONNECTION_STRING" --source .
 ```
 
 If the deployment is successful, the Azure CLI returns the URL of the app. You can use this URL to connect to the server from Visual Studio Code.

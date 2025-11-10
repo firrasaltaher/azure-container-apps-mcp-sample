@@ -40,6 +40,7 @@ $LOCATION = $env:LOCATION
 $API_KEYS = $env:API_KEYS
 $SQL_SERVER_CONNECTION_STRING = $env:SQL_SERVER_CONNECTION_STRING
 $REGISTRY_NAME = $env:REGISTRY_NAME
+# $APIM_NAME = $env:APIM_NAME
 
 # Validate required variables
 if (-not $RESOURCE_GROUP_NAME) { Write-Host "❌ RESOURCE_GROUP_NAME is not set" -ForegroundColor Red; exit 1 }
@@ -47,6 +48,7 @@ if (-not $CONTAINER_APP_NAME) { Write-Host "❌ CONTAINER_APP_NAME is not set" -
 if (-not $CONTAINER_APP_ENV) { Write-Host "❌ CONTAINER_APP_ENV is not set" -ForegroundColor Red; exit 1 }
 if (-not $LOCATION) { Write-Host "❌ LOCATION is not set" -ForegroundColor Red; exit 1 }
 if (-not $REGISTRY_NAME) { Write-Host "❌ REGISTRY_NAME is not set" -ForegroundColor Red; exit 1 }
+# if (-not $APIM_NAME) { Write-Host "❌ APIM_NAME is not set" -ForegroundColor Red; exit 1 }
 
 # Check if Dockerfile exists
 if (-not (Test-Path "Dockerfile")) {
@@ -60,6 +62,7 @@ Write-Host "Container App: $CONTAINER_APP_NAME" -ForegroundColor Cyan
 Write-Host "Environment: $CONTAINER_APP_ENV" -ForegroundColor Cyan
 Write-Host "Location: $LOCATION" -ForegroundColor Cyan
 Write-Host "Registry: $REGISTRY_NAME" -ForegroundColor Cyan
+Write-Host "APIM Name: $APIM_NAME" -ForegroundColor Cyan
 
 # Check if resource group exists
 Write-Host "📦 Checking resource group..." -ForegroundColor Yellow
@@ -131,6 +134,23 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "⚠️  Warning: Failed to enable ACR admin user" -ForegroundColor Yellow
 }
 
+
+## TODO: update this code once one can deploy basicv2 sku using az cli
+# # Check if Azure API Management exists
+# Write-Host "🌐 Checking Azure API Management..." -ForegroundColor Yellow
+# $apimExists = Test-AzureResource -Command "az apim show --name '$APIM_NAME' --resource-group '$RESOURCE_GROUP_NAME' --query 'name' -o tsv" -ResourceName $APIM_NAME -ResourceType "Azure API Management"
+
+# if (-not $apimExists) {
+#     Write-Host "🌐 Creating Azure API Management with BasicV2 SKU..." -ForegroundColor Yellow
+#     Write-Host "⏳ This may take 10-45 minutes to complete..." -ForegroundColor Yellow
+#     az apim create --name $APIM_NAME --resource-group $RESOURCE_GROUP_NAME --location $LOCATION --sku-name "Basic V2" --publisher-email "admin@example.com" --publisher-name "MCP Admin"
+#     if ($LASTEXITCODE -ne 0) {
+#         Write-Host "❌ Failed to create Azure API Management" -ForegroundColor Red
+#         exit 1
+#     }
+#     Write-Host "✅ Azure API Management created successfully" -ForegroundColor Green
+# }
+
 # Alternative 1: Try ACR Build (cloud-based, no local Docker needed)
 Write-Host "🔨 Building and pushing Docker image to ACR (cloud build)..." -ForegroundColor Yellow
 $acrImageName = "$CONTAINER_APP_NAME:latest"
@@ -200,13 +220,17 @@ Write-Host ""
 # Get the FQDN
 Write-Host "🔍 Retrieving deployment information..." -ForegroundColor Yellow
 $fqdn = az containerapp show --name $CONTAINER_APP_NAME --resource-group $RESOURCE_GROUP_NAME --query 'properties.configuration.ingress.fqdn' -o tsv
+#$apimGatewayUrl = az apim show --name $APIM_NAME --resource-group $RESOURCE_GROUP_NAME --query 'gatewayUrl' -o tsv
 
 if ($fqdn) {
     Write-Host "📋 Deployment Summary:" -ForegroundColor Green
-    Write-Host "  🔗 URL: https://$fqdn" -ForegroundColor White
+    Write-Host "  🔗 Container App URL: https://$fqdn" -ForegroundColor White
+    # Uncomment once apim can be deployed using az cli
+    # Write-Host "  🌐 APIM Gateway URL: $apimGatewayUrl" -ForegroundColor White
     Write-Host "  🔑 API Key: $API_KEYS" -ForegroundColor White
     Write-Host "  📊 Health Check: https://$fqdn/health" -ForegroundColor White
     Write-Host "  🛠️  Tools List: https://$fqdn/mcp/tools/list" -ForegroundColor White
+    Write-Host "  🎯 MCP Endpoint: https://$fqdn/mcp" -ForegroundColor White
     Write-Host ""
     Write-Host "🧪 Testing endpoints..." -ForegroundColor Yellow
     
@@ -223,6 +247,12 @@ if ($fqdn) {
     if ($healthResponse) {
         Write-Host "Health check response: $($healthResponse | ConvertTo-Json -Depth 2)" -ForegroundColor Gray
     }
+    
+    Write-Host ""
+    Write-Host "🎯 Next Steps:" -ForegroundColor Green
+    Write-Host "  1. Configure APIM API to proxy the MCP endpoint" -ForegroundColor White
+    Write-Host "  2. Set up subscription keys for API access control" -ForegroundColor White
+    Write-Host "  3. Test MCP Inspector with: https://$fqdn/mcp" -ForegroundColor White
 } else {
     Write-Host "⚠️  Could not retrieve FQDN. Check deployment status manually." -ForegroundColor Yellow
 }

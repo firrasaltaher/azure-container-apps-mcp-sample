@@ -59,6 +59,12 @@ VS Code MCP configuration (mcp.json):
 ## Deploy to Azure Container Apps
 
 ```bash
+.\deploy.ps1
+```
+
+Alternatively, you can deploy using the Azure CLI directly:
+
+```bash
 az containerapp up -g ${{RESOURCE_GROUP_NAME}} -n weather-mcp --environment mcp -l westus --env-vars-file .env --source .
 ```
 
@@ -83,3 +89,16 @@ az upgrade
 az extension add -n containerapp --upgrade
 ```
 
+## APIM Configuration
+
+API Management instance of Basic V2 will need to be created/deployed either in the portal, terraform,bicep, or ARM.  PS/az cli is not available yet.
+
+Once APIM Basic V2 (or any V2 tier that has MCP Server functionality), is available:
+
+* Navigate to the "MCP Servers (preview)" section under APIs
+* Click on "Create MCP server" and then choose "Expose an existing MCP server":
+  * MCP server base url: Enter the container app endpoint, followed by /mcp
+  * Display name: Functionality of the mcp server (sql mcp server)
+  * Base path: This will be added as a suffix to the APIM url
+
+* Once created, you should now see an MCP Server with a server url of https://{apim_fqdn}/{base_path}/mcp
